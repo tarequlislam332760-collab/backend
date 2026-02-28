@@ -1,76 +1,37 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// ডাটাবেজ কানেকশন
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Atlas Connected!"))
-  .catch(err => console.error("❌ DB Error:", err));
-
-// কমন স্কিমা
-const MessageSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    phone: { type: String, required: true },
-    area: { type: String },    // শুধু অভিযোগের জন্য
-    subject: { type: String }, // শুধু কন্টাক্টের জন্য
-    message: { type: String, required: true },
-    type: { type: String },    // 'contact' অথবা 'complaint'
-    date: { type: Date, default: Date.now }
+// ১. প্রজেক্ট ও ব্লগের জন্য Schema তৈরি
+const projectSchema = new mongoose.Schema({
+  title: String,
+  image: String, // ছবির লিঙ্ক (URL)
+  desc: String,
+  category: String, // 'project' অথবা 'blog'
+  date: { type: Date, default: Date.now }
 });
 
-const Message = mongoose.model('Message', MessageSchema);
+const Project = mongoose.model('Project', projectSchema);
 
-// --- রুটস (Routes) ---
-
-// ১. সার্ভার চেক করার জন্য হোম রুট (GET)
-app.get('/', (req, res) => {
-    res.send("<h1>Backend Server is Running!</h1>");
+// ২. ডাটা সেভ করার API (Save)
+app.post('/api/projects', async (req, res) => {
+  try {
+    const newProject = new Project(req.body);
+    await newProject.save();
+    res.status(201).json(newProject);
+  } catch (err) { res.status(500).json(err); }
 });
 
-// ২. অভিযোগ দেখার জন্য রুট (GET) - এটি আপনার ব্রাউজারে চেক করতে সাহায্য করবে
-app.get('/api/complaints', async (req, res) => {
-    try {
-        const complaints = await Message.find({ type: 'complaint' });
-        res.status(200).json(complaints);
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+// ৩. সব ডাটা দেখার API (Fetch)
+app.get('/api/projects', async (req, res) => {
+  const projects = await Project.find().sort({ date: -1 });
+  res.json(projects);
 });
 
-// ৩. অভিযোগ জমা দেওয়ার রুট (POST)
-app.post('/api/complaints', async (req, res) => {
-    try {
-        const data = { ...req.body, type: 'complaint' };
-        const newMessage = new Message(data);
-        await newMessage.save();
-        res.status(200).json({ success: true, message: "Complaint saved successfully!" });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+// ৪. ডাটা আপডেট করার API (Edit/Update)
+app.put('/api/projects/:id', async (req, res) => {
+  const updated = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updated);
 });
 
-// ৪. কন্টাক্ট মেসেজ জমা দেওয়ার রুট (POST)
-app.post('/api/messages', async (req, res) => {
-    try {
-        const data = { ...req.body, type: 'contact' };
-        const newMessage = new Message(data);
-        await newMessage.save();
-        res.status(200).json({ success: true, message: "Message saved successfully!" });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+// ৫. ডাটা ডিলিট করার API (Delete)
+app.delete('/api/projects/:id', async (req, res) => {
+  await Project.findByIdAndDelete(req.params.id);
+  res.json({ message: "Deleted" });
 });
-
-// সার্ভার লিসেন (লোকাল হোস্টের জন্য)
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
-// Vercel এর জন্য এক্সপোর্ট
-module.exports = app;
