@@ -5,16 +5,15 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ ১. Middleware - CORS এবং JSON সাপোর্ট
-// origin: "*" দিলে যেকোনো ডোমেইন থেকে রিকোয়েস্ট কাজ করবে
+// ✅ ১. CORS ফিক্স (Network Error দূর করার জন্য এটি সবচেয়ে জরুরি)
 app.use(cors({
-    origin: "*",
+    origin: "*", 
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true
 }));
 app.use(express.json());
 
-// ✅ ২. ডাটাবেজ কানেকশন (Timeout ফিক্সসহ)
+// ✅ ২. ডাটাবেজ কানেকশন
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -40,13 +39,10 @@ const Content = mongoose.model('Content', new mongoose.Schema({
     description: String,
     image: String,
     category: String, 
-    location: String,
-    date: { type: String },
-    status: String,    
     createdAt: { type: Date, default: Date.now }
 }));
 
-// নতুন পেজ মডেল (Add/Edit Pages)
+// পেজ মডেল (Home, About এবং নতুন পেজ অ্যাড করার জন্য)
 const Page = mongoose.model('Page', new mongoose.Schema({
     type: String, // 'home', 'about', or 'custom'
     title: String,
@@ -57,12 +53,9 @@ const Page = mongoose.model('Page', new mongoose.Schema({
 
 // --- ৪. API Routes ---
 
-// হোম রুট
-app.get('/', (req, res) => {
-    res.send("<h1>Naser Rahman MP Backend is Running!</h1>");
-});
+app.get('/', (req, res) => res.send("<h1>Naser Rahman MP Backend is Running!</h1>"));
 
-// ⭐ অভিযোগ (Complaints) API
+// ⭐ অভিযোগ API
 app.get('/api/complaints', async (req, res) => {
     try {
         const data = await Message.find().sort({ date: -1 });
@@ -74,11 +67,11 @@ app.post('/api/complaints', async (req, res) => {
     try {
         const newMessage = new Message(req.body);
         await newMessage.save();
-        res.status(201).json({ success: true, message: "আপনার অভিযোগ সফলভাবে জমা হয়েছে!" });
+        res.status(201).json({ success: true, message: "সফলভাবে জমা হয়েছে!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ⭐ কন্টেন্ট (Project/Blog) API
+// ⭐ কন্টেন্ট API
 app.get('/api/content', async (req, res) => {
     try {
         const data = await Content.find().sort({ createdAt: -1 });
@@ -90,18 +83,18 @@ app.post('/api/content', async (req, res) => {
     try {
         const newContent = new Content(req.body);
         await newContent.save();
-        res.status(201).json({ success: true, message: "আপলোড সফল হয়েছে!" });
+        res.status(201).json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/content/:id', async (req, res) => {
     try {
         await Content.findByIdAndDelete(req.params.id);
-        res.json({ message: "ডিলিট সফল হয়েছে!" });
+        res.json({ message: "ডিলিট সফল!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ⭐ পেজ ম্যানেজমেন্ট (Page Add/Edit) API
+// ⭐ পেজ অ্যাড এবং এডিট API
 app.get('/api/pages', async (req, res) => {
     try {
         const pages = await Page.find();
@@ -121,14 +114,7 @@ app.post('/api/page-content', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete('/api/pages/:id', async (req, res) => {
-    try {
-        await Page.findByIdAndDelete(req.params.id);
-        res.json({ message: "পেজ ডিলিট সফল হয়েছে!" });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 
 module.exports = app;
