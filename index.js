@@ -1,13 +1,15 @@
-// backend/server.js (Update this part)
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// ডাটাবেজ কানেকশন
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Atlas Connected!"))
   .catch(err => console.error("❌ DB Error:", err));
@@ -16,33 +18,47 @@ mongoose.connect(process.env.MONGO_URI)
 
 // অভিযোগ ও মেসেজ মডেল
 const MessageSchema = new mongoose.Schema({
-    name: String, phone: String, area: String, subject: String, message: String,
-    type: String, date: { type: Date, default: Date.now }
+    name: String, 
+    phone: String, 
+    area: String, 
+    subject: String, 
+    message: String,
+    type: String, 
+    date: { type: Date, default: Date.now }
 });
 const Message = mongoose.model('Message', MessageSchema);
 
-// প্রজেক্ট ও ব্লগ মডেল (Dynamic Content)
+// প্রজেক্ট ও ব্লগ মডেল
 const ContentSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: String,
     image: String,
     category: String, // 'project' অথবা 'blog'
-    location: String, // শুধু প্রজেক্টের জন্য
+    location: String,
     date: { type: String },
-    status: String,   // 'সম্পন্ন', 'চলমান' ইত্যাদি
+    status: String,   
     createdAt: { type: Date, default: Date.now }
 });
 const Content = mongoose.model('Content', ContentSchema);
 
 // --- ২. রুটস (API Routes) ---
 
-// অভিযোগগুলো দেখার API
-app.get('/api/complaints', async (req, res) => {
-    const data = await Message.find().sort({ date: -1 });
-    res.json(data);
+// হোম রুট (সার্ভার চেক করার জন্য)
+app.get('/', (req, res) => {
+    res.send("<h1>Naser Rahman MP Backend is Running!</h1>");
 });
 
-// নতুন প্রজেক্ট বা ব্লগ যোগ করার API
+// সব অভিযোগ দেখার API
+app.get('/api/complaints', async (req, res) => {
+    try {
+        const data = await Message.find().sort({ date: -1 });
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// নতুন কন্টেন্ট (প্রজেক্ট/ব্লগ) আপলোড করার API
 app.post('/api/content', async (req, res) => {
     try {
         const newContent = new Content(req.body);
@@ -53,24 +69,28 @@ app.post('/api/content', async (req, res) => {
     }
 });
 
-// সব প্রজেক্ট ও ব্লগ পাওয়ার API
+// সব কন্টেন্ট পাওয়ার API
 app.get('/api/content', async (req, res) => {
-    const data = await Content.find().sort({ createdAt: -1 });
-    res.json(data);
-});
-
-// এডিট বা আপডেট করার API
-app.put('/api/content/:id', async (req, res) => {
-    await Content.findByIdAndUpdate(req.params.id, req.body);
-    res.json({ message: "আপডেট সফল হয়েছে!" });
+    try {
+        const data = await Content.find().sort({ createdAt: -1 });
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ডিলিট করার API
 app.delete('/api/content/:id', async (req, res) => {
-    await Content.findByIdAndDelete(req.params.id);
-    res.json({ message: "ডিলিট করা হয়েছে!" });
+    try {
+        await Content.findByIdAndDelete(req.params.id);
+        res.json({ message: "ডিলিট সফল হয়েছে!" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
+// সার্ভার পোর্ট সেটআপ
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
 module.exports = app;
