@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ ১. CORS ফিক্স (Network Error দূর করার জন্য এটি সবচেয়ে জরুরি)
+// ✅ ১. CORS ফিক্স (Network Error দূর করার জন্য)
 app.use(cors({
     origin: "*", 
     methods: ["GET", "POST", "DELETE", "PUT"],
@@ -13,10 +13,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ✅ ২. ডাটাবেজ কানেকশন
+// ✅ ২. ডাটাবেজ কানেকশন (Timeout এবং Buffering ফিক্স করা হয়েছে)
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000, // ৫ সেকেন্ডের মধ্যে কানেক্ট না হলে এরর দিবে
+    bufferCommands: false,         // বাফারিং বন্ধ করা হয়েছে যাতে ঝুলে না থাকে
 })
 .then(() => console.log("✅ MongoDB Atlas Connected!"))
 .catch(err => console.error("❌ DB Error:", err));
@@ -42,12 +44,12 @@ const Content = mongoose.model('Content', new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }));
 
-// পেজ মডেল (Home, About এবং নতুন পেজ অ্যাড করার জন্য)
+// পেজ মডেল
 const Page = mongoose.model('Page', new mongoose.Schema({
-    type: String, // 'home', 'about', or 'custom'
-    title: String,
-    subtitle: String,
-    content: String,
+    type: String, 
+    title: String, 
+    subtitle: String, 
+    content: String, 
     slug: String
 }));
 
@@ -67,7 +69,7 @@ app.post('/api/complaints', async (req, res) => {
     try {
         const newMessage = new Message(req.body);
         await newMessage.save();
-        res.status(201).json({ success: true, message: "সফলভাবে জমা হয়েছে!" });
+        res.status(201).json({ success: true, message: "সফলভাবে জমা হয়েছে!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -94,7 +96,7 @@ app.delete('/api/content/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ⭐ পেজ অ্যাড এবং এডিট API
+// ⭐ পেজ এডিট API
 app.get('/api/pages', async (req, res) => {
     try {
         const pages = await Page.find();
