@@ -31,7 +31,7 @@ const connectDB = async () => {
     }
 };
 
-// কানেকশন শুরু করুন
+// সার্ভার শুরুর সময় কানেকশন কল
 connectDB();
 
 // --- ৩. ডাটাবেজ মডেলসমূহ ---
@@ -59,7 +59,9 @@ app.get('/api/complaints', async (req, res) => {
         await connectDB(); // রুট কল হওয়ার সময় নিশ্চিত করবে কানেক্টেড কি না
         const data = await Message.find().sort({ date: -1 });
         res.json(data);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        res.status(500).json({ error: "Database Connection Error. Please refresh." }); 
+    }
 });
 
 app.post('/api/complaints', async (req, res) => {
@@ -71,7 +73,23 @@ app.post('/api/complaints', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ⭐ কন্টেন্ট এবং পেজ API-গুলোতেও একইভাবে await connectDB() যোগ করা হয়েছে
+// ⭐ কন্টেন্ট API
+app.get('/api/content', async (req, res) => {
+    try {
+        await connectDB();
+        const data = await Content.find().sort({ createdAt: -1 });
+        res.json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// পেজ এডিট API
+app.get('/api/pages', async (req, res) => {
+    try {
+        await connectDB();
+        const pages = await Page.find();
+        res.json(pages);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
