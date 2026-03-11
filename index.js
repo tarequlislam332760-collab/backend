@@ -8,8 +8,8 @@ const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] }));
 app.use(express.json());
 
-// ✅ অটোমেটিক ভেরিয়েবল চেক এবং এরর ফিক্সিং লজিক
-let DB_LINK = process.env.MONGO_URI || process.env.MONGO_URL;
+// ✅ অটোমেটিক ভেরিয়েবল চেক (URL অথবা URI যেটিই থাকুক কাজ করবে)
+const DB_LINK = process.env.MONGO_URI || process.env.MONGO_URL;
 
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
@@ -20,10 +20,10 @@ const connectDB = async () => {
   }
 
   try {
-    // যদি আপনার লিঙ্কে কোনো ভুল অপশন থাকে, তবে তা পরিষ্কার করে কানেক্ট করবে
+    // এখানে dbName আলাদাভাবে দেওয়া হয়েছে যাতে unsupported option এরর না আসে
     await mongoose.connect(DB_LINK, {
       serverSelectionTimeoutMS: 15000,
-      dbName: "tareq_db" // আপনার ডাটাবেজের নাম এখানে ফিক্সড করে দেওয়া হলো
+      dbName: "tareq_db" 
     });
     console.log("✅ MongoDB Connected Successfully to tareq_db");
   } catch (error) {
