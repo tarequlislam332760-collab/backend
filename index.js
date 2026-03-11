@@ -8,17 +8,26 @@ const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] }));
 app.use(express.json());
 
-// ✅ Stable MongoDB Connection
+// ✅ অটোমেটিক ভেরিয়েবল চেক (URL অথবা URI যেটিই থাকুক কাজ করবে)
+const DB_LINK = process.env.MONGO_URI || process.env.MONGO_URL;
+
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
+  
+  if (!DB_LINK) {
+    console.error("❌ Error: No MongoDB Link found in Vercel Settings!");
+    return;
+  }
+
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000, 
+    await mongoose.connect(DB_LINK, {
+      serverSelectionTimeoutMS: 15000, 
     });
-    console.log("✅ MongoDB Connected");
+    console.log("✅ MongoDB Connected Successfully");
   } catch (error) {
-    console.error("❌ MongoDB Error:", error.message);
-    throw new Error("Database connection failed");
+    console.error("❌ MongoDB Connection Error:", error.message);
+    // Vercel-এ এরর ডিটেইলস দেখার জন্য এটি থ্রো করা জরুরি
+    throw error;
   }
 };
 
@@ -33,7 +42,6 @@ const Content = mongoose.models.Content || mongoose.model("Content", new mongoos
   createdAt: { type: Date, default: Date.now },
 }));
 
-// Navbar মডেল
 const NavItem = mongoose.models.NavItem || mongoose.model("NavItem", new mongoose.Schema({
   name: String, link: String, createdAt: { type: Date, default: Date.now },
 }));
@@ -44,8 +52,13 @@ app.get("/", (req, res) => res.send("Backend Server Running"));
 
 // ⭐ Navbar Routes
 app.get("/api/nav", async (req, res) => {
-  try { await connectDB(); const items = await NavItem.find().sort({ createdAt: 1 }); res.json(items); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try { 
+    await connectDB(); 
+    const items = await NavItem.find().sort({ createdAt: 1 }); 
+    res.json(items); 
+  } catch (err) { 
+    res.status(500).json({ error: "DB Error: " + err.message }); 
+  }
 });
 
 app.post("/api/nav", async (req, res) => {
@@ -61,7 +74,7 @@ app.delete("/api/nav/:id", async (req, res) => {
 // ⭐ Complaints & Content
 app.get("/api/complaints", async (req, res) => {
   try { await connectDB(); const data = await Message.find().sort({ date: -1 }); res.json(data); } 
-  catch (err) { res.status(500).json({ error: "Database Error" }); }
+  catch (err) { res.status(500).json({ error: "Database Connection Error" }); }
 });
 
 app.get("/api/content", async (req, res) => {
@@ -74,12 +87,7 @@ app.post("/api/content", async (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.delete("/api/content/:id", async (req, res) => {
-  try { await connectDB(); await Content.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 
 module.exports = app;
