@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ ১. CORS ফিক্স (Network Error দূর করার জন্য)
+// ✅ ১. CORS ফিক্স
 app.use(cors({
     origin: "*", 
     methods: ["GET", "POST", "DELETE", "PUT"],
@@ -13,53 +13,48 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ✅ ২. ডাটাবেজ কানেকশন (Timeout এবং Buffering ফিক্স করা হয়েছে)
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000, // ৫ সেকেন্ডের মধ্যে কানেক্ট না হলে এরর দিবে
-    bufferCommands: false,         // বাফারিং বন্ধ করা হয়েছে যাতে ঝুলে না থাকে
-})
-.then(() => console.log("✅ MongoDB Atlas Connected!"))
-.catch(err => console.error("❌ DB Error:", err));
+// ✅ ২. ডাটাবেজ কানেকশন (Timeout এবং Buffering ফিক্স)
+const connectDB = async () => {
+    if (mongoose.connection.readyState >= 1) return;
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
+            bufferCommands: false, // বাফারিং অফ
+        });
+        console.log("✅ MongoDB Atlas Connected!");
+    } catch (err) {
+        console.error("❌ DB Error:", err);
+    }
+};
+
+// ডাটাবেজ কানেকশন কল
+connectDB();
 
 // --- ৩. ডাটাবেজ মডেলসমূহ ---
-
-// অভিযোগ মডেল
 const Message = mongoose.model('Message', new mongoose.Schema({
-    name: String, 
-    phone: String, 
-    area: String, 
-    subject: String, 
-    message: String,
+    name: String, phone: String, area: String, subject: String, message: String,
     date: { type: Date, default: Date.now }
 }));
 
-// কন্টেন্ট মডেল (Project/Blog)
 const Content = mongoose.model('Content', new mongoose.Schema({
-    title: { type: String, required: true },
-    description: String,
-    image: String,
-    category: String, 
-    createdAt: { type: Date, default: Date.now }
+    title: { type: String, required: true }, description: String, image: String,
+    category: String, createdAt: { type: Date, default: Date.now }
 }));
 
-// পেজ মডেল
 const Page = mongoose.model('Page', new mongoose.Schema({
-    type: String, 
-    title: String, 
-    subtitle: String, 
-    content: String, 
-    slug: String
+    type: String, title: String, subtitle: String, content: String, slug: String
 }));
 
 // --- ৪. API Routes ---
 
 app.get('/', (req, res) => res.send("<h1>Naser Rahman MP Backend is Running!</h1>"));
 
-// ⭐ অভিযোগ API
+// ⭐ অভিযোগ API (এখানে কানেকশন চেক যোগ করা হয়েছে)
 app.get('/api/complaints', async (req, res) => {
     try {
+        await connectDB(); // রুট কল হওয়ার সময় চেক করবে কানেক্টেড কি না
         const data = await Message.find().sort({ date: -1 });
         res.json(data);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -67,6 +62,7 @@ app.get('/api/complaints', async (req, res) => {
 
 app.post('/api/complaints', async (req, res) => {
     try {
+        await connectDB();
         const newMessage = new Message(req.body);
         await newMessage.save();
         res.status(201).json({ success: true, message: "সফলভাবে জমা হয়েছে!" });
@@ -76,6 +72,7 @@ app.post('/api/complaints', async (req, res) => {
 // ⭐ কন্টেন্ট API
 app.get('/api/content', async (req, res) => {
     try {
+        await connectDB();
         const data = await Content.find().sort({ createdAt: -1 });
         res.json(data);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -83,6 +80,7 @@ app.get('/api/content', async (req, res) => {
 
 app.post('/api/content', async (req, res) => {
     try {
+        await connectDB();
         const newContent = new Content(req.body);
         await newContent.save();
         res.status(201).json({ success: true });
@@ -91,6 +89,7 @@ app.post('/api/content', async (req, res) => {
 
 app.delete('/api/content/:id', async (req, res) => {
     try {
+        await connectDB();
         await Content.findByIdAndDelete(req.params.id);
         res.json({ message: "ডিলিট সফল!" });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -99,6 +98,7 @@ app.delete('/api/content/:id', async (req, res) => {
 // ⭐ পেজ এডিট API
 app.get('/api/pages', async (req, res) => {
     try {
+        await connectDB();
         const pages = await Page.find();
         res.json(pages);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -106,11 +106,10 @@ app.get('/api/pages', async (req, res) => {
 
 app.post('/api/page-content', async (req, res) => {
     try {
+        await connectDB();
         const { type, data } = req.body;
         const updatedPage = await Page.findOneAndUpdate(
-            { type: type },
-            { $set: data },
-            { upsert: true, new: true }
+            { type: type }, { $set: data }, { upsert: true, new: true }
         );
         res.json({ success: true, updatedPage });
     } catch (err) { res.status(500).json({ error: err.message }); }
