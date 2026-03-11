@@ -5,26 +5,19 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ CORS (Vercel-এর জন্য credentials ও origin সেট করা ভালো)
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
-
+app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] }));
 app.use(express.json());
 
-// ✅ MongoDB Connection (Serverless-এ এটি এভাবে হ্যান্ডেল করতে হয়)
+// ✅ Stable MongoDB Connection
 const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) return; // আগে কানেক্ট থাকলে আর করবে না
-
+  if (mongoose.connection.readyState >= 1) return;
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000, // ৫ সেকেন্ডের বেশি সময় নিলে এরর দিবে
+      serverSelectionTimeoutMS: 10000, 
     });
     console.log("✅ MongoDB Connected");
   } catch (error) {
-    console.error("❌ MongoDB Connection Error:", error);
-    // সার্ভারলেস ফাংশনে এরর থ্রো করা জরুরি যাতে পরের ধাপ না চলে
+    console.error("❌ MongoDB Error:", error.message);
     throw new Error("Database connection failed");
   }
 };
@@ -35,45 +28,58 @@ const Message = mongoose.models.Message || mongoose.model("Message", new mongoos
   date: { type: Date, default: Date.now },
 }));
 
-// (অন্যান্য মডেলগুলো এখানে থাকবে...)
 const Content = mongoose.models.Content || mongoose.model("Content", new mongoose.Schema({
-  title: { type: String, required: true }, description: String, image: String,
-  category: String, createdAt: { type: Date, default: Date.now },
+  title: { type: String, required: true }, image: String, category: String,
+  createdAt: { type: Date, default: Date.now },
+}));
+
+// Navbar মডেল
+const NavItem = mongoose.models.NavItem || mongoose.model("NavItem", new mongoose.Schema({
+  name: String, link: String, createdAt: { type: Date, default: Date.now },
 }));
 
 // ---------------- ROUTES ----------------
 
 app.get("/", (req, res) => res.send("Backend Server Running"));
 
-// ⭐ complaints GET (এখানেই মূল পরিবর্তন)
+// ⭐ Navbar Routes
+app.get("/api/nav", async (req, res) => {
+  try { await connectDB(); const items = await NavItem.find().sort({ createdAt: 1 }); res.json(items); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/nav", async (req, res) => {
+  try { await connectDB(); const newItem = new NavItem(req.body); await newItem.save(); res.json({ success: true }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete("/api/nav/:id", async (req, res) => {
+  try { await connectDB(); await NavItem.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ⭐ Complaints & Content
 app.get("/api/complaints", async (req, res) => {
-  try {
-    await connectDB(); // রিকোয়েস্ট আসার পর আগে কানেকশন নিশ্চিত করবে
-    const data = await Message.find().sort({ date: -1 });
-    res.json(data);
-  } catch (error) {
-    console.log("Error details:", error.message);
-    res.status(500).json({ error: "Database Connection Error. Please refresh." });
-  }
+  try { await connectDB(); const data = await Message.find().sort({ date: -1 }); res.json(data); } 
+  catch (err) { res.status(500).json({ error: "Database Error" }); }
 });
 
-// ⭐ complaints POST
-app.post("/api/complaints", async (req, res) => {
-  try {
-    await connectDB();
-    const newMessage = new Message(req.body);
-    await newMessage.save();
-    res.status(201).json({ success: true, message: "সফলভাবে জমা হয়েছে!" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+app.get("/api/content", async (req, res) => {
+  try { await connectDB(); const data = await Content.find().sort({ createdAt: -1 }); res.json(data); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// (অন্যান্য API গুলোতেও একইভাবে await connectDB() যোগ করুন)
+app.post("/api/content", async (req, res) => {
+  try { await connectDB(); const newItem = new Content(req.body); await newItem.save(); res.status(201).json({ success: true }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete("/api/content/:id", async (req, res) => {
+  try { await connectDB(); await Content.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 module.exports = app;
