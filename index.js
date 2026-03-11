@@ -13,7 +13,6 @@ const DB_LINK = process.env.MONGO_URI || process.env.MONGO_URL;
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
   try {
-    // dbName এখানে আলাদাভাবে দেওয়ায় "not supported" এররটি আর আসবে না
     await mongoose.connect(DB_LINK, {
       serverSelectionTimeoutMS: 15000,
       dbName: "tareq_db" 
@@ -25,19 +24,30 @@ const connectDB = async () => {
   }
 };
 
+// ✅ মডেলটি ফাংশনের বাইরে একবার ডিফাইন করুন (Overwrite এরর থেকে বাঁচতে)
+const navSchema = new mongoose.Schema({
+    name: String,
+    link: String,
+    createdAt: { type: Date, default: Date.now }
+});
+
+// যদি মডেল আগে তৈরি করা থাকে তবে সেটি নিবে, না থাকলে নতুন বানাবে
+const NavItem = mongoose.models.NavItem || mongoose.model("NavItem", navSchema);
+
 app.get("/", (req, res) => res.send("Backend Server Running"));
 
 app.get("/api/nav", async (req, res) => {
   try { 
     await connectDB(); 
-    const items = await mongoose.model("NavItem", new mongoose.Schema({name: String, link: String})).find().sort({ createdAt: 1 }); 
+    // ✅ এখানে সরাসরি NavItem ব্যবহার করুন
+    const items = await NavItem.find().sort({ createdAt: 1 }); 
     res.json(items); 
   } catch (err) { 
     res.status(500).json({ error: "DB Error: " + err.message }); 
   }
 });
 
-// অন্যান্য রুটগুলো এখানে থাকবে... (আমি সংক্ষেপ করলাম, আপনার আগের কোডের রুটগুলো রেখে দিন)
+// --- অন্যান্য রুট (যদি থাকে) এখানে যোগ করুন ---
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
