@@ -17,35 +17,62 @@ const connectDB = async () => {
     } catch (error) { console.error("❌ DB Error:", error.message); }
 };
 
-// Content Model
+// ১. Content Model (লোগো, হিরো এবং ব্লগের জন্য)
 const Content = mongoose.models.Content || mongoose.model("Content", new mongoose.Schema({
     title: String, 
     image: String, 
-    description: String,
     category: { type: String, enum: ['project', 'blog', 'hero', 'logo'], default: 'project' },
     lang: { type: String, default: 'bn' }, 
     createdAt: { type: Date, default: Date.now }
 }));
 
-// API Routes
+// ২. Nav Model (নেভবার মেনুর জন্য আলাদা মডেল)
+const Nav = mongoose.models.Nav || mongoose.model("Nav", new mongoose.Schema({
+    name: String,
+    link: String,
+    lang: { type: String, default: 'bn' }
+}));
+
+// --- Content Routes ---
 app.get("/api/content", async (req, res) => {
-    try { 
-        await connectDB(); 
-        const data = await Content.find().sort({ createdAt: -1 }); 
-        res.json(data); 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    try { await connectDB(); const data = await Content.find().sort({ createdAt: -1 }); res.json(data); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post("/api/content", async (req, res) => {
-    try { 
-        await connectDB(); 
-        const data = new Content(req.body); 
-        await data.save(); 
-        res.json({ success: true }); 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    try { await connectDB(); const data = new Content(req.body); await data.save(); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get("/", (req, res) => res.send("API is running..."));
+// এডিট করার জন্য PUT রুট (এটি আগে ছিল না)
+app.put("/api/content/:id", async (req, res) => {
+    try { await connectDB(); await Content.findByIdAndUpdate(req.params.id, req.body); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ডিলিট করার জন্য DELETE রুট
+app.delete("/api/content/:id", async (req, res) => {
+    try { await connectDB(); await Content.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// --- Nav Routes --- (এটি না থাকলে নেভবারে মেনু আসবে না)
+app.get("/api/nav", async (req, res) => {
+    try { await connectDB(); const data = await Nav.find(); res.json(data); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/nav", async (req, res) => {
+    try { await connectDB(); const data = new Nav(req.body); await data.save(); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete("/api/nav/:id", async (req, res) => {
+    try { await connectDB(); await Nav.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/", (req, res) => res.send("Backend Running Successfully!"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
