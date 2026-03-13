@@ -4,17 +4,22 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+
+// Middleware
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] }));
 app.use(express.json());
 
 const DB_LINK = process.env.MONGO_URI || process.env.MONGO_URL;
 
+// MongoDB Connection Logic
 const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) return;
     try {
         await mongoose.connect(DB_LINK, { serverSelectionTimeoutMS: 15000, dbName: "tareq_db" });
         console.log("✅ MongoDB Connected Successfully");
-    } catch (error) { console.error("❌ DB Error:", error.message); }
+    } catch (error) { 
+        console.error("❌ DB Error:", error.message); 
+    }
 };
 
 // --- Models ---
@@ -35,7 +40,13 @@ const NavItem = mongoose.models.NavItem || mongoose.model("NavItem", new mongoos
 }));
 
 // --- Routes ---
-// General Data Fetch
+
+// ১. এই রুটটি "Cannot GET /" এররটি সমাধান করবে
+app.get("/", (req, res) => {
+    res.send("🚀 Nasir Rahman MP Backend is running perfectly!");
+});
+
+// Complaints API
 app.get("/api/complaints", async (req, res) => {
     try { await connectDB(); const data = await Complaint.find().sort({ createdAt: -1 }); res.json(data); } 
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -51,7 +62,7 @@ app.delete("/api/complaints/:id", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Content API (Hero, Logo, Projects)
+// Content API (Hero, Logo, Projects, Blogs)
 app.get("/api/content", async (req, res) => {
     try { await connectDB(); const data = await Content.find().sort({ createdAt: -1 }); res.json(data); } 
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -88,6 +99,7 @@ app.delete("/api/nav/:id", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Server Setup
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
