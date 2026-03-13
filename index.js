@@ -77,4 +77,4 @@ app.get("/", (req, res) => res.send("Backend Running Successfully!"));
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
 
-module.exports = app;
+module.exports = app; 
