@@ -41,7 +41,6 @@ app.post("/api/complaints", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ✅ Delete Complaint Route (নতুন যোগ করা হয়েছে)
 app.delete("/api/complaints/:id", async (req, res) => {
     try { await connectDB(); await Complaint.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -58,6 +57,15 @@ app.post("/api/content", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ✅ কন্টেন্ট এডিট করার নতুন রুট (এটি আগে ছিল না)
+app.put("/api/content/:id", async (req, res) => {
+    try { 
+        await connectDB(); 
+        const updatedData = await Content.findByIdAndUpdate(req.params.id, req.body, { new: true }); 
+        res.json({ success: true, data: updatedData }); 
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.delete("/api/content/:id", async (req, res) => {
     try { await connectDB(); await Content.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -71,6 +79,20 @@ app.get("/api/nav", async (req, res) => {
 
 app.post("/api/nav", async (req, res) => {
     try { await connectDB(); const newItem = new NavItem(req.body); await newItem.save(); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ✅ নেভিগেশন আইটেম এডিট করার নতুন রুট
+app.put("/api/nav/:id", async (req, res) => {
+    try { 
+        await connectDB(); 
+        await NavItem.findByIdAndUpdate(req.params.id, req.body); 
+        res.json({ success: true }); 
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete("/api/nav/:id", async (req, res) => {
+    try { await connectDB(); await NavItem.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
