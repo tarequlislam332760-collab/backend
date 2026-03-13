@@ -17,7 +17,7 @@ const connectDB = async () => {
     } catch (error) { console.error("❌ DB Error:", error.message); }
 };
 
-// ১. Content Model (লোগো, হিরো এবং ব্লগের জন্য)
+// --- Models ---
 const Content = mongoose.models.Content || mongoose.model("Content", new mongoose.Schema({
     title: String, 
     image: String, 
@@ -26,11 +26,18 @@ const Content = mongoose.models.Content || mongoose.model("Content", new mongoos
     createdAt: { type: Date, default: Date.now }
 }));
 
-// ২. Nav Model (নেভবার মেনুর জন্য আলাদা মডেল)
 const Nav = mongoose.models.Nav || mongoose.model("Nav", new mongoose.Schema({
     name: String,
     link: String,
     lang: { type: String, default: 'bn' }
+}));
+
+// ১. Complaints Model (এটি নতুন যোগ করা হয়েছে)
+const Complaint = mongoose.models.Complaint || mongoose.model("Complaint", new mongoose.Schema({
+    name: String,
+    email: String,
+    message: String,
+    createdAt: { type: Date, default: Date.now }
 }));
 
 // --- Content Routes ---
@@ -44,19 +51,17 @@ app.post("/api/content", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// এডিট করার জন্য PUT রুট (এটি আগে ছিল না)
 app.put("/api/content/:id", async (req, res) => {
     try { await connectDB(); await Content.findByIdAndUpdate(req.params.id, req.body); res.json({ success: true }); } 
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ডিলিট করার জন্য DELETE রুট
 app.delete("/api/content/:id", async (req, res) => {
     try { await connectDB(); await Content.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- Nav Routes --- (এটি না থাকলে নেভবারে মেনু আসবে না)
+// --- Nav Routes ---
 app.get("/api/nav", async (req, res) => {
     try { await connectDB(); const data = await Nav.find(); res.json(data); } 
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -72,9 +77,25 @@ app.delete("/api/nav/:id", async (req, res) => {
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- Complaints Routes (এটি ফ্রন্টএন্ড এররের সমাধান করবে) ---
+app.get("/api/complaints", async (req, res) => {
+    try { await connectDB(); const data = await Complaint.find().sort({ createdAt: -1 }); res.json(data); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post("/api/complaints", async (req, res) => {
+    try { await connectDB(); const data = new Complaint(req.body); await data.save(); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete("/api/complaints/:id", async (req, res) => {
+    try { await connectDB(); await Complaint.findByIdAndDelete(req.params.id); res.json({ success: true }); } 
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get("/", (req, res) => res.send("Backend Running Successfully!"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
 
-module.exports = app; 
+module.exports = app;
